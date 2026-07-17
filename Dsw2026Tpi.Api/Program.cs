@@ -3,6 +3,8 @@ using Dsw2026Tpi.Api.Middlewares;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Serilog;
+using Dsw2026Tpi.Api.Seed;
+
 
 namespace Dsw2026Tpi.Api;
 
@@ -53,6 +55,9 @@ public class Program
 
             app.MapControllers();
             app.MapHealthChecks("/health-check");
+
+            await AdminSeeder.SeedAsync(app.Services);
+
 
             Log.Information("Aplicación iniciada correctamente");
 

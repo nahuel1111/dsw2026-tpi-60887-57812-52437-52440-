@@ -33,24 +33,56 @@ public class AuthenticationService : IAuthenticationService
 
     public async Task<LoginAdminModel.Response> LoginAdmin(LoginAdminModel.Request request)
     {
-        if (!request.Email.IsEmailValid()) throw new AuthenticationException();
-        var user = await _userManager.FindByEmailAsync(request.Email) ?? throw new AuthenticationException();
-        var result = await _signInManager.CheckPassword(user, request.Password);
-
-        if (!result)
+        if (!request.Email.IsEmailValid())
         {
-            _logger.LogError("Intento de login fallido para: {Email}", request.Email);
-            throw new AuthenticationException();
+            throw new ValidationException(
+                "Email es inválido",
+                ErrorCodes.VALIDATION_ERROR)
+                .WithDetail("email", "Formato inválido");
         }
 
-        var role = (await _userManager.GetRolesAsync(user)).FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
+        {
+            throw new ValidationException(
+                "Password inválido",
+                ErrorCodes.VALIDATION_ERROR)
+                .WithDetail("password", "Debe tener al menos 8 caracteres");
+        }
 
-        var token  = _jwtService.GenerateToken(user.UserName!, role);
+        var user = await _userManager.FindByEmailAsync(request.Email);
 
-        return new LoginAdminModel.Response(
-            token,
+        if (user == null)
+        {
+            throw new AuthenticationException(
+       "Credenciales inválidas",
+       ErrorCodes.AUTHENTICATION_FAILED)
+       .WithDetail("login", "Usuario o contraseña incorrectos");
+        }
+
+        var passwordCorrect = await _userManager.CheckPasswordAsync(
+            user,
+            request.Password
+        );
+
+        if (!passwordCorrect)
+        {
+            _logger.LogError("Intento de login fallido para: {Email}", request.Email);
+            throw new AuthenticationException(
+          "Credenciales inválidas",
+          ErrorCodes.AUTHENTICATION_FAILED)
+          .WithDetail("login", "Usuario o contraseña incorrectos");
+        }
+
+        var roles = await _userManager.GetRolesAsync(user);
+
+        var role = roles.FirstOrDefault();
+
+        var token = _jwtService.GenerateToken(
+            user.UserName!,
             role
         );
+
+        return new LoginAdminModel.Response(token, role);
     }
 
     public async Task<LoginPatientModel.Response> LoginPatient(LoginPatientModel.Request request)

@@ -24,7 +24,6 @@ public class AuthenticationController : AppController
         return Ok(result);
     }
 
-
     [HttpPost("admin/login")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
