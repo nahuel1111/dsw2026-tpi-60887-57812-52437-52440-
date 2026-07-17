@@ -4,16 +4,19 @@ using Dsw2026Tpi.Data.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace Dsw2026Tpi.Data.Migrations.Identity
+namespace Dsw2026Tpi.Data.Migrations
 {
     [DbContext(typeof(AuthenticationDbContext))]
-    partial class AuthenticationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260717162016_Initial_Identity")]
+    partial class Initial_Identity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -231,6 +234,9 @@ namespace Dsw2026Tpi.Data.Migrations.Identity
 
                     b.Property<bool>("Deleted")
                         .HasColumnType("bit");
+
+                    b.Property<string>("Dni")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");

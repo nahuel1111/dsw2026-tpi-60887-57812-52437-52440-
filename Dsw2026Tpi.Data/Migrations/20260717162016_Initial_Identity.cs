@@ -1,11 +1,12 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Dsw2026Tpi.Data.Migrations.Identity
+namespace Dsw2026Tpi.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class Initial_Model : Migration
+    public partial class Initial_Identity : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -77,7 +78,8 @@ namespace Dsw2026Tpi.Data.Migrations.Identity
                     Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     Deleted = table.Column<bool>(type: "bit", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Dni = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
