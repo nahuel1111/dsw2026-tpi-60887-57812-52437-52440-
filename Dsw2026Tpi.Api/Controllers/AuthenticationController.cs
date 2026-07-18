@@ -14,13 +14,14 @@ public class AuthenticationController : AppController
         _authenticationService = authenticationService;
     }
 
-    [HttpPost("admin/register")]
+
+    [HttpPost("patient/login")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Register([FromBody] RegisterModel.Request request)
+    public async Task<IActionResult> LoginPatient([FromBody] LoginPatientModel.Request request)
     {
-        var result = await _authenticationService.Register(request);
-        return Ok(result.Email); 
+        var result = await _authenticationService.LoginPatient(request);
+        return Ok(result);
     }
 
     [HttpPost("admin/login")]

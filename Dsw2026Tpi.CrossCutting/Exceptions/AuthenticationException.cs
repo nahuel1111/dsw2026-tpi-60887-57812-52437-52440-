@@ -13,4 +13,8 @@ public class AuthenticationException : AppException
             nameof(ErrorCodes.AUTHENTICATION_FAILED))
     {
     }
+
+    public AuthenticationException(string message, string errorCode) : base(message, errorCode)
+    {
+    }
 }

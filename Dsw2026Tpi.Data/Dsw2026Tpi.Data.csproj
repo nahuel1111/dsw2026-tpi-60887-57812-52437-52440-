@@ -27,6 +27,8 @@
 
   <ItemGroup>
     <Folder Include="Migrations\Domain\" />
+    <Folder Include="Migrations\Dsw2026TpiDb\" />
+    <Folder Include="Migrations\Identity\" />
   </ItemGroup>
 
 </Project>
