@@ -51,7 +51,18 @@ public class PersistenceEf: IPersistence
 
     public async Task<T> Update<T>(T entity) where T : EntityBase
     {
-        _context.Update(entity);
+        var tracked = _context.ChangeTracker.Entries<T>()
+                         .FirstOrDefault(e => e.Entity.Id == entity.Id);
+
+        if (tracked != null)
+        {
+            tracked.CurrentValues.SetValues(entity);
+        }
+        else
+        {
+            _context.Update(entity);
+        }
+
         await _context.SaveChangesAsync();
         return entity;
     }
