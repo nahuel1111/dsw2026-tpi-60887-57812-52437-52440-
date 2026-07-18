@@ -75,7 +75,8 @@ public class AuthenticationService : IAuthenticationService
 
         var roles = await _userManager.GetRolesAsync(user);
 
-        var role = roles.FirstOrDefault();
+        var role = roles.FirstOrDefault()?.ToUpperInvariant();
+
 
         var token = _jwtService.GenerateToken(
             user.UserName!,

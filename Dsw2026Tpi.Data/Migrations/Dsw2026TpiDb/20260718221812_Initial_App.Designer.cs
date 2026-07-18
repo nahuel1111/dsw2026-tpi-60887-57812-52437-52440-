@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Dsw2026Tpi.Data.Migrations.Dsw2026TpiDb
 {
     [DbContext(typeof(Dsw2026TpiDbContext))]
-    [Migration("20260717165227_Initial_App")]
+    [Migration("20260718221812_Initial_App")]
     partial class Initial_App
     {
         /// <inheritdoc />
@@ -67,9 +67,15 @@ namespace Dsw2026Tpi.Data.Migrations.Dsw2026TpiDb
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
