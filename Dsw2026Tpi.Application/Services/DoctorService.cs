@@ -8,10 +8,14 @@ namespace Dsw2026Tpi.Application.Services;
 public class DoctorService : IDoctorService
 {
     private readonly IPersistence _persistence;
+    private readonly IAvailabilityService _availabilityService;
 
-    public DoctorService(IPersistence persistence)
+
+    public DoctorService(IPersistence persistence, IAvailabilityService availabilityService)
     {
         _persistence = persistence;
+        _availabilityService = availabilityService;
+
     }
 
     public async Task<Pagination<DoctorModel.Response>> GetAll(int pageSize, int pageIndex, string? name = null)
@@ -92,11 +96,12 @@ public class DoctorService : IDoctorService
 
     public async Task<IEnumerable<DoctorModel.AvailabilityResponse>> GetAvailabilitiesAsync(Guid id)
     {
-        // 1. Validar que el médico exista en la base de datos
         var doctor = await _persistence.GetById<Doctor>(id)
             ?? throw new Exception("El médico especificado no existe.");
 
-        // 2. Si no hay disponibilidades cargadas aún, retornamos una lista vacía como pide la especificación
-        return new List<DoctorModel.AvailabilityResponse>();
+        var availabilities = await _availabilityService.GetByDoctorAsync(id);
+
+        return availabilities.Select(a =>
+            new DoctorModel.AvailabilityResponse(a.Day, a.StartTime, a.EndTime));
     }
 }

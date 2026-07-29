@@ -79,11 +79,47 @@ namespace Dsw2026Tpi.CrossCutting.Resources {
         }
         
         /// <summary>
+        ///   Busca una cadena traducida similar a Existe un solapamiento de horarios para el médico..
+        /// </summary>
+        public static string AVAILABILITY_CONFLICT {
+            get {
+                return ResourceManager.GetString("AVAILABILITY_CONFLICT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Busca una cadena traducida similar a Debe indicar al menos un día de atención..
+        /// </summary>
+        public static string DAYS_REQUIRED {
+            get {
+                return ResourceManager.GetString("DAYS_REQUIRED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Busca una cadena traducida similar a La entidad {0} no se encontró.
         /// </summary>
         public static string ENTITY_NOTFOUND {
             get {
                 return ResourceManager.GetString("ENTITY_NOTFOUND", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Busca una cadena traducida similar a El día indicado no es válido..
+        /// </summary>
+        public static string INVALID_DAY {
+            get {
+                return ResourceManager.GetString("INVALID_DAY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Busca una cadena traducida similar a El formato de la hora es inválido..
+        /// </summary>
+        public static string INVALID_TIME_FORMAT {
+            get {
+                return ResourceManager.GetString("INVALID_TIME_FORMAT", resourceCulture);
             }
         }
         
@@ -111,6 +147,15 @@ namespace Dsw2026Tpi.CrossCutting.Resources {
         public static string REGISTER_USER_INVALID {
             get {
                 return ResourceManager.GetString("REGISTER_USER_INVALID", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Busca una cadena traducida similar a La hora de inicio debe ser anterior a la hora de fin..
+        /// </summary>
+        public static string START_TIME_AFTER_END_TIME {
+            get {
+                return ResourceManager.GetString("START_TIME_AFTER_END_TIME", resourceCulture);
             }
         }
         
