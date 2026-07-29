@@ -123,8 +123,20 @@
   <data name="AUTHORIZATION_FAILED" xml:space="preserve">
     <value>Se requieren permisos para la operación solicitada</value>
   </data>
+  <data name="AVAILABILITY_CONFLICT" xml:space="preserve">
+    <value>Existe un solapamiento de horarios para el médico.</value>
+  </data>
+  <data name="DAYS_REQUIRED" xml:space="preserve">
+    <value>Debe indicar al menos un día de atención.</value>
+  </data>
   <data name="ENTITY_NOTFOUND" xml:space="preserve">
     <value>La entidad {0} no se encontró</value>
+  </data>
+  <data name="INVALID_DAY" xml:space="preserve">
+    <value>El día indicado no es válido.</value>
+  </data>
+  <data name="INVALID_TIME_FORMAT" xml:space="preserve">
+    <value>El formato de la hora es inválido.</value>
   </data>
   <data name="LOGIN_INVALID" xml:space="preserve">
     <value>Usuario o Dni incorrectos</value>
@@ -134,6 +146,9 @@
   </data>
   <data name="REGISTER_USER_INVALID" xml:space="preserve">
     <value>Datos de registración de usuario no válidos</value>
+  </data>
+  <data name="START_TIME_AFTER_END_TIME" xml:space="preserve">
+    <value>La hora de inicio debe ser anterior a la hora de fin.</value>
   </data>
   <data name="UNHANDLED_ERROR" xml:space="preserve">
     <value>Se produjo un error no controlado</value>
