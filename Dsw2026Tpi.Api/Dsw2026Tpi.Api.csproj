@@ -30,4 +30,8 @@
     <ProjectReference Include="..\Dsw2026Tpi.Domain\Dsw2026Tpi.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Filters\" />
+  </ItemGroup>
+
 </Project>

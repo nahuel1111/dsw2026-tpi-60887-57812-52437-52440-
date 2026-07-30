@@ -147,6 +147,9 @@
   <data name="REGISTER_USER_INVALID" xml:space="preserve">
     <value>Datos de registración de usuario no válidos</value>
   </data>
+  <data name="SPECIALITY_CONFLICT" xml:space="preserve">
+    <value>La especialidad ya existe</value>
+  </data>
   <data name="START_TIME_AFTER_END_TIME" xml:space="preserve">
     <value>La hora de inicio debe ser anterior a la hora de fin.</value>
   </data>

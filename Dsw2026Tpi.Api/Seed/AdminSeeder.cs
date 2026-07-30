@@ -1,13 +1,7 @@
 ﻿
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using Dsw2026Tpi.CrossCutting.Identity;
 using Dsw2026Tpi.Data.Identity;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 namespace Dsw2026Tpi.Api.Seed
 {
     public class AdminSeeder
@@ -24,8 +18,6 @@ namespace Dsw2026Tpi.Api.Seed
 
             var adminEmail = config["Admin:Email"];
             var adminPassword = config["Admin:Password"];
-            logger.LogInformation("Email admin leído: {Email}", adminEmail);
-
             if (!await roleManager.RoleExistsAsync(Roles.Administrator))
             {
                 await roleManager.CreateAsync(new IdentityRole(Roles.Administrator));
@@ -64,7 +56,6 @@ namespace Dsw2026Tpi.Api.Seed
                 Roles.Administrator
             );
 
-            logger.LogInformation("Usuario admin creado: {Email}", adminEmail);
         }
     }
 }

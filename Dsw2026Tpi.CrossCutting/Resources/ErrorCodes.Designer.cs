@@ -151,6 +151,15 @@ namespace Dsw2026Tpi.CrossCutting.Resources {
         }
         
         /// <summary>
+        ///   Busca una cadena traducida similar a La especialidad ya existe.
+        /// </summary>
+        public static string SPECIALITY_CONFLICT {
+            get {
+                return ResourceManager.GetString("SPECIALITY_CONFLICT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Busca una cadena traducida similar a La hora de inicio debe ser anterior a la hora de fin..
         /// </summary>
         public static string START_TIME_AFTER_END_TIME {
