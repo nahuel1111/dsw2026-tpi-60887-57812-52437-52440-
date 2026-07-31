@@ -25,7 +25,6 @@ public class ExceptionHandlingMiddleware
         }
         catch (Exception ex)
         {
-            // Si es una excepción controlada de la aplicación, registrar con detalles en español
             if (ex is AppException appEx)
             {
                 var details = appEx.Error.Details != null && appEx.Error.Details.Any()

@@ -2,6 +2,9 @@ using Dsw2026Tpi.Api.Configurations;
 using Dsw2026Tpi.Api.Middlewares;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Dsw2026Tpi.CrossCutting.Models;
+using Dsw2026Tpi.Data.Options;
+
 using Serilog;
 using Dsw2026Tpi.Api.Seed;
 using System.Threading.RateLimiting;
@@ -27,7 +30,6 @@ public class Program
 
             var builder = WebApplication.CreateBuilder(args);
 
-            //Configuraciones personalizadas
             builder.AddSerilogConfiguration();
             builder.Services.AddAppIdentity();
             builder.Services.AddAppAuthentication(builder.Configuration);
@@ -35,13 +37,12 @@ public class Program
             builder.Services.AddApplicationPersistence(builder.Configuration);
             builder.Services.AddAppCors(builder.Configuration);
             builder.Services.AddAppDependencies();
-            // Rate limiting configuration: read values from configuration
             var rlSection = builder.Configuration.GetSection("RateLimiting");
-            var periodMinutes = rlSection.GetValue<int?>("PeriodMinutes") ?? 1;
-            var adminPer = rlSection.GetValue<int?>("AdminPerPeriod") ?? 5;
-            var patientPer = rlSection.GetValue<int?>("PatientPerPeriod") ?? 10;
-            var appointmentPer = rlSection.GetValue<int?>("AppointmentPerPeriod") ?? 5;
-            var generalPer = rlSection.GetValue<int?>("GeneralPerPeriod") ?? 100;
+            var periodMinutes = rlSection.GetValue<int>("PeriodMinutes");
+            var adminPer = rlSection.GetValue<int>("AdminPerPeriod");
+            var patientPer = rlSection.GetValue<int>("PatientPerPeriod");
+            var appointmentPer = rlSection.GetValue<int>("AppointmentPerPeriod");
+            var generalPer = rlSection.GetValue<int>("GeneralPerPeriod");
 
             builder.Services.AddRateLimiter(options =>
             {
@@ -55,9 +56,9 @@ public class Program
 
                     http.Response.StatusCode = StatusCodes.Status429TooManyRequests;
                     http.Response.ContentType = "application/json";
-                    var err = new Dsw2026Tpi.CrossCutting.Models.ErrorResponse("TOO_MANY_REQUESTS", "demasiadas_solicitudes");
+                    var err = new ErrorResponse("TOO_MANY_REQUESTS", "demasiadas_solicitudes");
                     err.AddDetail("limite", "se_excedio_el_limite_de_solicitudes");
-                    var json = System.Text.Json.JsonSerializer.Serialize(err, Dsw2026Tpi.Data.Options.JsonOptions.JsonSerializerOptions);
+                    var json = System.Text.Json.JsonSerializer.Serialize(err, JsonOptions.JsonSerializerOptions);
                     await http.Response.WriteAsync(json, ct);
                 };
 
@@ -66,7 +67,6 @@ public class Program
                     var path = httpContext.Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
                     var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-                    // Admin auth: per IP (soporta rutas con o sin prefijo /api)
                     if (path.Equals("/auth/admin/login", StringComparison.OrdinalIgnoreCase)
                         || path.EndsWith("/auth/admin/login", StringComparison.OrdinalIgnoreCase)
                         || path.Equals("/api/auth/admin/login", StringComparison.OrdinalIgnoreCase))
@@ -83,7 +83,6 @@ public class Program
                         });
                     }
 
-                    // Patient auth: per IP (soporta rutas con o sin prefijo /api)
                     if (path.Equals("/auth/patient/login", StringComparison.OrdinalIgnoreCase)
                         || path.EndsWith("/auth/patient/login", StringComparison.OrdinalIgnoreCase)
                         || path.Equals("/api/auth/patient/login", StringComparison.OrdinalIgnoreCase))
@@ -100,7 +99,6 @@ public class Program
                         });
                     }
 
-                    // Appointment reservation: POST /api/appointments -> per user or IP (soporta rutas sin prefijo tambien)
                     if ((path.StartsWith("/api/appointments", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/appointments", StringComparison.OrdinalIgnoreCase))
                         && httpContext.Request.Method.Equals("POST", StringComparison.OrdinalIgnoreCase))
                     {

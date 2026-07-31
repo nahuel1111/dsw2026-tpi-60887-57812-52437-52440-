@@ -37,7 +37,7 @@ public class AvailabilityService : IAvailabilityService
                 ? "Argentina Standard Time"
                 : "America/Argentina/Buenos_Aires");
         var now = TimeZoneInfo.ConvertTimeFromUtc(
-            DateTime.UtcNow,
+            DateTime.Now,
             argentinaTimeZone);
         var startMonth = new DateTime(now.Year, now.Month, 1);
         var endMonth = startMonth.AddMonths(1);
@@ -157,7 +157,7 @@ public class AvailabilityService : IAvailabilityService
 
 
         var now = TimeZoneInfo.ConvertTimeFromUtc(
-            DateTime.UtcNow,
+            DateTime.Now,
             argentinaTimeZone);
 
 
