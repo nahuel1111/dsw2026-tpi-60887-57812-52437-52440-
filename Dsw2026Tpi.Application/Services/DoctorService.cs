@@ -1,5 +1,7 @@
 ﻿using Dsw2026Tpi.Application.Dtos;
 using Dsw2026Tpi.Application.Interfaces;
+using Dsw2026Tpi.CrossCutting.Exceptions;
+using Dsw2026Tpi.CrossCutting.Resources;
 using Dsw2026Tpi.Domain.Entities;
 using Dsw2026Tpi.Domain.Interfaces;
 
@@ -16,6 +18,19 @@ public class DoctorService : IDoctorService
 
     public async Task<Pagination<DoctorModel.Response>> GetAll(int pageSize, int pageIndex, string? name = null)
     {
+        // Validar el filtro de búsqueda por nombre si se proporciona (longitud entre 3 y 100)
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            var trimmedName = name.Trim();
+            if (trimmedName.Length < 3 || trimmedName.Length > 100)
+            {
+                throw new ValidationException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    nameof(ErrorCodes.VALIDATION_ERROR))
+                    .WithDetail("name", "longitud_invalida_3_100");
+            }
+        }
+
         var doctors = await _persistence.Paginate<Doctor, string>(
             pageSize,
             pageIndex,
@@ -34,17 +49,23 @@ public class DoctorService : IDoctorService
 
     public async Task<DoctorModel.Response> CreateAsync(DoctorModel.Request request)
     {
-        // 1. Validar que la especialidad exista
+        // Validar los datos de entrada
+        ValidateDoctorRequest(request);
+
+        // Validar que la especialidad exista y esté activa
         var speciality = await _persistence.GetById<Speciality>(request.SpecialityId)
-            ?? throw new Exception("La especialidad especificada no existe.");
+            ?? throw new ValidationException(
+                ErrorCodes.ENTITY_NOTFOUND,
+                nameof(ErrorCodes.ENTITY_NOTFOUND))
+                .WithDetail("specialityId", "especialidad_no_encontrada");
 
-        // 2. Crear la entidad Doctor
-        var doctor = new Doctor(request.Name, request.LicenseNumber, speciality);
+        // Crear la entidad Doctor
+        var doctor = new Doctor(request.Name.Trim(), request.LicenseNumber, speciality);
 
-        // 3. Guardar en la base de datos
+        // Guardar en la base de datos
         await _persistence.Add(doctor);
 
-        // 4. Retornar la respuesta
+        // Retornar la respuesta mapeada
         return new DoctorModel.Response(
             doctor.Id,
             doctor.Name,
@@ -55,17 +76,25 @@ public class DoctorService : IDoctorService
 
     public async Task<DoctorModel.Response> UpdateAsync(Guid id, DoctorModel.Request request)
     {
-        // 1. Buscar el médico existente
+        // Validar datos de entrada
+        ValidateDoctorRequest(request);
+
+        // Buscar el médico existente
         var doctor = await _persistence.GetById<Doctor>(id)
-            ?? throw new Exception("El médico especificado no existe.");
+            ?? throw new ValidationException(
+                ErrorCodes.ENTITY_NOTFOUND,
+                nameof(ErrorCodes.ENTITY_NOTFOUND))
+                .WithDetail("id", "medico_no_encontrado");
 
-        // 2. Validar que la especialidad exista
+        // Validar que la especialidad exista
         var speciality = await _persistence.GetById<Speciality>(request.SpecialityId)
-            ?? throw new Exception("La especialidad especificada no existe.");
+            ?? throw new ValidationException(
+                ErrorCodes.ENTITY_NOTFOUND,
+                nameof(ErrorCodes.ENTITY_NOTFOUND))
+                .WithDetail("specialityId", "especialidad_no_encontrada");
 
-        // 3. Actualizar entidad
-        var updatedDoctor = new Doctor(request.Name, request.LicenseNumber, speciality, id);
-
+        // Actualizar la entidad
+        var updatedDoctor = new Doctor(request.Name.Trim(), request.LicenseNumber, speciality, id);
         await _persistence.Update(updatedDoctor);
 
         return new DoctorModel.Response(
@@ -78,25 +107,73 @@ public class DoctorService : IDoctorService
 
     public async Task DeleteAsync(Guid id)
     {
-        // 1. Buscar el médico existente
+        // Buscar el médico existente
         var doctor = await _persistence.GetById<Doctor>(id)
-            ?? throw new Exception("El médico especificado no existe.");
+            ?? throw new ValidationException(
+                ErrorCodes.ENTITY_NOTFOUND,
+                nameof(ErrorCodes.ENTITY_NOTFOUND))
+                .WithDetail("id", "medico_no_encontrado");
 
-        // 2. Aplicar borrado lógico
+        // Aplicar borrado lógico
         doctor.Deactivate();
 
-        // 3. Actualizar en la base de datos
+        // Actualizar en la base de datos
         await _persistence.Update(doctor);
     }
 
-
     public async Task<IEnumerable<DoctorModel.AvailabilityResponse>> GetAvailabilitiesAsync(Guid id)
     {
-        // 1. Validar que el médico exista en la base de datos
+        // Validar que el médico exista en la base de datos
         var doctor = await _persistence.GetById<Doctor>(id)
-            ?? throw new Exception("El médico especificado no existe.");
+            ?? throw new ValidationException(
+                ErrorCodes.ENTITY_NOTFOUND,
+                nameof(ErrorCodes.ENTITY_NOTFOUND))
+                .WithDetail("id", "medico_no_encontrado");
 
-        // 2. Si no hay disponibilidades cargadas aún, retornamos una lista vacía como pide la especificación
+        // Si no hay disponibilidades cargadas aún, retornamos lista vacía según la especificación
         return new List<DoctorModel.AvailabilityResponse>();
+    }
+
+    /// <summary>
+    /// Método privado para validar reglas de negocio sobre la solicitud de un médico.
+    /// </summary>
+    private static void ValidateDoctorRequest(DoctorModel.Request request)
+    {
+        if (request == null)
+        {
+            throw new ValidationException(
+                ErrorCodes.VALIDATION_ERROR,
+                nameof(ErrorCodes.VALIDATION_ERROR))
+                .WithDetail("request", "solicitud_nula");
+        }
+
+        // Validar Nombre obligatorio
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            throw new ValidationException(
+                ErrorCodes.VALIDATION_ERROR,
+                nameof(ErrorCodes.VALIDATION_ERROR))
+                .WithDetail("name", "nombre_requerido");
+        }
+
+        var trimmedName = request.Name.Trim();
+
+        // Validar longitud del Nombre (entre 3 y 100 caracteres)
+        if (trimmedName.Length < 3 || trimmedName.Length > 100)
+        {
+            throw new ValidationException(
+                ErrorCodes.VALIDATION_ERROR,
+                nameof(ErrorCodes.VALIDATION_ERROR))
+                .WithDetail("name", "longitud_invalida_3_100");
+        }
+
+        // Validar Especialidad ID no vacía
+        if (request.SpecialityId == Guid.Empty)
+        {
+            throw new ValidationException(
+                ErrorCodes.VALIDATION_ERROR,
+                nameof(ErrorCodes.VALIDATION_ERROR))
+                .WithDetail("specialityId", "especialidad_requerida");
+        }
     }
 }

@@ -6,6 +6,6 @@ public record DoctorModel
     public record Response(Guid Id, string Name, string LicenseNumber, SpecialityDto? Speciality);
     public record SpecialityDto(Guid? SpecialityId, string? Name);
 
-    // represnta la disponibilidad horaria del médico
+    // representa la disponibilidad horaria del médico
     public record AvailabilityResponse(string Day, string StarTime, string EndTime);
 }

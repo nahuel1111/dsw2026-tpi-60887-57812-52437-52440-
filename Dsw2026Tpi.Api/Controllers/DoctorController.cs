@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Dsw2026Tpi.Api.Controllers;
 
-[Route("doctors")]
+[Route("api/doctors")]
 [Authorize(Policy = Policies.AdminPolicy)]
 public class DoctorController : AppController
 {
@@ -19,6 +19,7 @@ public class DoctorController : AppController
 
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetAll([FromQuery] int pageSize, [FromQuery] int pageIndex, [FromQuery] string? name = null)
     {
         var doctors = await _service.GetAll(pageSize, pageIndex, name);
@@ -46,22 +47,21 @@ public class DoctorController : AppController
 
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete([FromRoute] Guid id)
     {
         await _service.DeleteAsync(id);
-        return NoContent();
+        return Ok("ok");
     }
-
-    // endpoint de availabilities
 
     [HttpGet("{id:guid}/availabilities")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAvailabilities([FromRoute] Guid id)
     {
         var availabilities = await _service.GetAvailabilitiesAsync(id);
         return Ok(availabilities);
     }
-
 }
