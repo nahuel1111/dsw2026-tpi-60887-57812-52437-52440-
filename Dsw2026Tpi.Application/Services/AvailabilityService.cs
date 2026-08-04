@@ -37,7 +37,7 @@ public class AvailabilityService : IAvailabilityService
                 ? "Argentina Standard Time"
                 : "America/Argentina/Buenos_Aires");
         var now = TimeZoneInfo.ConvertTimeFromUtc(
-            DateTime.Now,
+            DateTime.UtcNow,
             argentinaTimeZone);
         var startMonth = new DateTime(now.Year, now.Month, 1);
         var endMonth = startMonth.AddMonths(1);
@@ -157,7 +157,7 @@ public class AvailabilityService : IAvailabilityService
 
 
         var now = TimeZoneInfo.ConvertTimeFromUtc(
-            DateTime.Now,
+            DateTime.UtcNow,
             argentinaTimeZone);
 
 
@@ -169,14 +169,18 @@ public class AvailabilityService : IAvailabilityService
             var existing = await _persistence.GetFiltered<Availability>(
                 a => a.DoctorId == request.DoctorId &&
                      a.Start >= startMonth &&
-                     a.Start < endMonth);
-
+                     a.Start < endMonth &&
+                     a.Start >= now);
 
             if (existing != null)
             {
                 foreach (var e in existing)
                 {
-                    await _persistence.Delete(e);
+                    var appointment = await _persistence.First<Appointment>(ap => ap.AvailabilityId == e.Id && ap.State == AppointmentState.BOOKED);
+                    if (appointment == null)
+                    {
+                        await _persistence.Delete(e);
+                    }
                 }
             }
         }
@@ -236,31 +240,6 @@ public class AvailabilityService : IAvailabilityService
 
 
 
-        if (!isUpdate)
-        {
-            var existing = await _persistence.GetFiltered<Availability>(
-                a => a.DoctorId == request.DoctorId &&
-                     a.Start >= startMonth &&
-                     a.Start < endMonth);
-
-
-            if (existing != null && existing.Any())
-            {
-                var overlap = existing.Any(e =>
-                    toCreate.Any(t => t.Start == e.Start));
-
-
-                if (overlap)
-                {
-                    throw new ConflictException(
-                        nameof(ErrorCodes.AVAILABILITY_CONFLICT),
-                        ErrorCodes.AVAILABILITY_CONFLICT)
-                        .WithDetail(
-                            "horario",
-                  "horario_solapado");
-                }
-            }
-        }
 
 
         foreach (var slot in toCreate)

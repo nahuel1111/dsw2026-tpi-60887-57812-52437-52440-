@@ -205,7 +205,7 @@ public class AppointmentService : IAppointmentService
     }
 
 
-    public async Task<Pagination<AppointmentModel.SearchResult>> SearchAsync(
+        public async Task<AppointmentModel.SearchResponse> SearchAsync(
         Guid? specialtyId,
         Guid? doctorId,
         long? dni,
@@ -222,76 +222,70 @@ public class AppointmentService : IAppointmentService
             date);
 
 
-        var all = await _persistence.GetFiltered<Appointment>(
-            a => a.State == AppointmentState.BOOKED);
+            var all = await _persistence.GetFiltered<Appointment>(
+                a => a.State == AppointmentState.BOOKED);
 
-        var list = (all ?? Enumerable.Empty<Appointment>()).ToList();
+            var list = (all ?? Enumerable.Empty<Appointment>()).ToList();
 
-        var filtered = new List<AppointmentModel.SearchResult>();
+            var filtered = new List<AppointmentModel.SearchItem>();
 
-        foreach (var a in list)
-        {
-            var doctor = await _persistence.GetById<Doctor>(
-                a.DoctorId,
-                nameof(Doctor.Speciality));
-
-            if (doctor == null)
-                continue;
-
-            if (specialtyId.HasValue &&
-                doctor.SpecialityId != specialtyId)
-                continue;
-
-            if (doctorId.HasValue &&
-                a.DoctorId != doctorId)
-                continue;
-
-            if (dni.HasValue &&
-                a.PatientDni != dni)
-                continue;
-
-            var avail = await _persistence.GetById<Availability>(
-                a.AvailabilityId);
-
-            if (avail == null)
-                continue;
-
-            if (date.HasValue)
+            foreach (var a in list)
             {
-                var d = date.Value.Date;
+                var doctor = await _persistence.GetById<Doctor>(
+                    a.DoctorId,
+                    nameof(Doctor.Speciality));
 
-                if (avail.Start.Date != d)
+                if (doctor == null)
                     continue;
+
+                if (specialtyId.HasValue &&
+                    doctor.SpecialityId != specialtyId)
+                    continue;
+
+                if (doctorId.HasValue &&
+                    a.DoctorId != doctorId)
+                    continue;
+
+                if (dni.HasValue &&
+                    a.PatientDni != dni)
+                    continue;
+
+                var avail = await _persistence.GetById<Availability>(
+                    a.AvailabilityId);
+
+                if (avail == null)
+                    continue;
+
+                if (date.HasValue)
+                {
+                    var d = date.Value.Date;
+
+                    if (avail.Start.Date != d)
+                        continue;
+                }
+
+                var specialty = new AppointmentModel.SpecialtyInfo(doctor.SpecialityId ?? Guid.Empty, doctor.Speciality?.Name ?? string.Empty);
+                var doctorInfo = new AppointmentModel.DoctorInfo(doctor.Id, doctor.Name ?? string.Empty, specialty);
+                var patientInfo = new AppointmentModel.PatientInfo(a.PatientDni, null);
+
+                filtered.Add(new AppointmentModel.SearchItem(a.Id, a.State.ToString(), patientInfo, doctorInfo));
             }
 
-            filtered.Add(
-                new AppointmentModel.SearchResult(
-                    doctor.Speciality?.Name ?? string.Empty,
-                    doctor.Name,
-                    avail.Start,
-                    doctor.Id,
-                    a.AvailabilityId));
-        }
+            var total = filtered.Count;
 
-        var total = filtered.Count;
+            var pageSizeAbs = Math.Abs(pageSize);
 
-        var pageSizeAbs = Math.Abs(pageSize);
+            var pageIndexNormalized =
+                Math.Abs(pageIndex) == 0
+                    ? 0
+                    : Math.Abs(pageIndex) - 1;
 
-        var pageIndexNormalized =
-            Math.Abs(pageIndex) == 0
-                ? 0
-                : Math.Abs(pageIndex) - 1;
+            var pageData = filtered
+                .OrderBy(r => r.appointmentsId) // order stable; original ordered by time but SearchItem doesn't contain time; keep deterministic order
+                .Skip(pageIndexNormalized * pageSizeAbs)
+                .Take(pageSizeAbs)
+                .ToList();
 
-        var pageData = filtered
-            .OrderBy(r => r.AvailableTime)
-            .Skip(pageIndexNormalized * pageSizeAbs)
-            .Take(pageSizeAbs);
-
-
-        return new Pagination<AppointmentModel.SearchResult>(
-            pageSizeAbs,
-            pageIndexNormalized,
-            total,
-            pageData);
+            return new AppointmentModel.SearchResponse(pageSizeAbs, pageIndexNormalized, pageData, total);
     }
 }

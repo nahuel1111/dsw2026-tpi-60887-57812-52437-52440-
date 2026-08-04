@@ -15,6 +15,21 @@ namespace Dsw2026Tpi.Application.Dtos
 
         public record SearchResult(string Specialty, string Doctor, DateTime AvailableTime, Guid DoctorId, Guid AvailabilityId);
 
+        // New search response item matching required structure
+        public record SearchItem(
+            Guid appointmentsId,
+            string appointmentsStatus,
+            PatientInfo patient,
+            DoctorInfo doctor);
+
+        public record PatientInfo(long dni, string? fullName);
+
+        public record DoctorInfo(Guid doctorId, string name, SpecialtyInfo specialty);
+
+        public record SpecialtyInfo(Guid specialtyId, string name);
+
+        public record SearchResponse(int pageSize, int pageIndex, IEnumerable<SearchItem> data, int total);
+
 
     }
 }

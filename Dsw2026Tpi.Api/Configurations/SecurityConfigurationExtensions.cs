@@ -3,6 +3,10 @@ using Dsw2026Tpi.Data.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
+using Dsw2026Tpi.CrossCutting.Resources;
+using Dsw2026Tpi.Data.Options;
+using Dsw2026Tpi.CrossCutting.Models;
+using Microsoft.Extensions.Logging;
 using System.Text;
 
 namespace Dsw2026Tpi.Api.Configurations;
@@ -37,6 +41,40 @@ public static class SecurityConfigurationExtensions
                     ValidIssuer = issuer,
                     ValidAudience = audience,
                     IssuerSigningKey = new SymmetricSecurityKey(key)
+                };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnChallenge = async context =>
+                    {
+                        context.HandleResponse();
+                        var http = context.HttpContext;
+                        var loggerFactory = http.RequestServices.GetService<ILoggerFactory>();
+                        var logger = loggerFactory?.CreateLogger("AuthEvents");
+                        logger?.LogWarning("Acceso no autenticado a {Path}", http.Request.Path);
+
+                        http.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        http.Response.ContentType = "application/json";
+                        var err = new ErrorResponse(nameof(ErrorCodes.AUTHENTICATION_FAILED), "no tiene permisos para usar este endpoint");
+                        err.AddDetail("auth", "no_autenticado");
+                        var json = System.Text.Json.JsonSerializer.Serialize(err, JsonOptions.JsonSerializerOptions);
+                        await http.Response.WriteAsync(json);
+                    },
+                    OnForbidden = async context =>
+                    {
+                        var http = context.HttpContext;
+                        var loggerFactory = http.RequestServices.GetService<ILoggerFactory>();
+                        var logger = loggerFactory?.CreateLogger("AuthEvents");
+                        logger?.LogWarning("Acceso no autorizado a {Path} por {User}", http.Request.Path, http.User?.Identity?.Name ?? "anonymous");
+
+                        http.Response.StatusCode = StatusCodes.Status403Forbidden;
+                        http.Response.ContentType = "application/json";
+                        var err = new ErrorResponse(nameof(ErrorCodes.AUTHORIZATION_FAILED), ErrorCodes.AUTHORIZATION_FAILED);
+             
+                        err.AddDetail("auth", "sin_permisos");
+                        var json = System.Text.Json.JsonSerializer.Serialize(err, JsonOptions.JsonSerializerOptions);
+                        await http.Response.WriteAsync(json);
+                    }
                 };
             });
         services.AddAuthorizationBuilder()

@@ -3,6 +3,8 @@ using Dsw2026Tpi.Api.Middlewares;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Dsw2026Tpi.CrossCutting.Models;
+using Dsw2026Tpi.CrossCutting.Resources;
+using Microsoft.AspNetCore.Mvc;
 using Dsw2026Tpi.Data.Options;
 
 using Serilog;
@@ -58,18 +60,17 @@ public class Program
                     http.Response.ContentType = "application/json";
                     var err = new ErrorResponse("TOO_MANY_REQUESTS", "demasiadas_solicitudes");
                     err.AddDetail("limite", "se_excedio_el_limite_de_solicitudes");
-                    var json = System.Text.Json.JsonSerializer.Serialize(err, JsonOptions.JsonSerializerOptions);
+                    var json = System.Text.Json.JsonSerializer.Serialize(err, Data.Options.JsonOptions.JsonSerializerOptions);
                     await http.Response.WriteAsync(json, ct);
                 };
 
                 options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
                 {
-                    var path = httpContext.Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
+                    var path = httpContext.Request.Path.Value?.ToLower() ?? string.Empty;
                     var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                    Console.WriteLine($"[LIMITER] Petición a: {path} | Método: {httpContext.Request.Method}");
 
-                    if (path.Equals("/auth/admin/login", StringComparison.OrdinalIgnoreCase)
-                        || path.EndsWith("/auth/admin/login", StringComparison.OrdinalIgnoreCase)
-                        || path.Equals("/api/auth/admin/login", StringComparison.OrdinalIgnoreCase))
+                    if (path.Equals("/api/auth/admin/login", StringComparison.OrdinalIgnoreCase))
                     {
                         var partitionKey = "admin-ip-" + ip;
                         return RateLimitPartition.GetTokenBucketLimiter(partitionKey, _ => new TokenBucketRateLimiterOptions
@@ -83,9 +84,7 @@ public class Program
                         });
                     }
 
-                    if (path.Equals("/auth/patient/login", StringComparison.OrdinalIgnoreCase)
-                        || path.EndsWith("/auth/patient/login", StringComparison.OrdinalIgnoreCase)
-                        || path.Equals("/api/auth/patient/login", StringComparison.OrdinalIgnoreCase))
+                    if (path.Equals("/api/auth/patient/login", StringComparison.OrdinalIgnoreCase))
                     {
                         var partitionKey = "patient-ip-" + ip;
                         return RateLimitPartition.GetTokenBucketLimiter(partitionKey, _ => new TokenBucketRateLimiterOptions
@@ -99,7 +98,7 @@ public class Program
                         });
                     }
 
-                    if ((path.StartsWith("/api/appointments", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/appointments", StringComparison.OrdinalIgnoreCase))
+                    if ((path.StartsWith("/api/appointments", StringComparison.OrdinalIgnoreCase) )
                         && httpContext.Request.Method.Equals("POST", StringComparison.OrdinalIgnoreCase))
                     {
                         var userId = httpContext.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -115,7 +114,9 @@ public class Program
                         });
                     }
 
-                    var user = httpContext.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                    var user = httpContext.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                               ?? httpContext.User?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
+                               ?? httpContext.User?.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
                     var generalKey = "general-" + (user ?? ip);
                     return RateLimitPartition.GetTokenBucketLimiter(generalKey, _ => new TokenBucketRateLimiterOptions
                     {
@@ -128,13 +129,18 @@ public class Program
                     });
                 });
             });
+            // Register a global model state filter that returns friendly validation errors
+            builder.Services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(opts =>
+            {
+                opts.Filters.Add(typeof(Dsw2026Tpi.Api.Filters.ValidateModelStateFilter));
+            });
+
             builder.Services.AddControllers();
             builder.Services.AddHealthChecks();
 
             var app = builder.Build();
 
             app.UseSerilogRequestLogging();
-            app.UseRateLimiter();
 
             if (app.Environment.IsProduction())
             {
@@ -148,6 +154,8 @@ public class Program
 
             app.UseAuthentication();
             app.UseAuthorization();
+            app.UseRateLimiter();
+
             app.UseCors();
             app.UseMiddleware<ExceptionHandlingMiddleware>();
 

@@ -65,8 +65,8 @@ public class AppointmentsController : AppController
         [FromQuery] Guid? doctorId,
         [FromQuery] long? dni,
         [FromQuery] DateTime? date,
-        [FromQuery] int pageSize = 10,
-        [FromQuery] int pageIndex = 1)
+        [FromQuery] int pageSize,
+        [FromQuery] int pageIndex)
     {
         var res = await _service.SearchAsync(
             specialtyId,
