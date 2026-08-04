@@ -12,7 +12,6 @@ public interface IDoctorService
     Task<DoctorModel.Response> UpdateAsync(Guid id, DoctorModel.Request request);
     Task DeleteAsync(Guid id);
 
-    // para el endpoint de availabities
     Task<IEnumerable<DoctorModel.AvailabilityResponse>> GetAvailabilitiesAsync(Guid id);
 }
 

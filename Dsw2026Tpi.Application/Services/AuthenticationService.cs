@@ -13,20 +13,16 @@ namespace Dsw2026Tpi.Application.Services;
 public class AuthenticationService : IAuthenticationService
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly ISignInService _signInManager;
-    private readonly RoleManager<IdentityRole> _roleManager;
     private readonly JwtService _jwtService;
     private readonly ILogger<AuthenticationService> _logger;
 
-    public AuthenticationService(UserManager<ApplicationUser> userManager,
-        ISignInService signInManager,
-        RoleManager<IdentityRole> roleManager,
+    public AuthenticationService(
+        UserManager<ApplicationUser> userManager,
+
         JwtService jwtService,
         ILogger<AuthenticationService> logger)
     {
         _userManager = userManager;
-        _signInManager = signInManager;
-        _roleManager = roleManager;
         _jwtService = jwtService;
         _logger = logger;
     }
@@ -53,42 +49,50 @@ public class AuthenticationService : IAuthenticationService
 
         if (user == null)
         {
+            _logger.LogWarning(
+                "Intento de login fallido. Usuario administrador inexistente: {Email}",
+                request.Email);
+
             throw new AuthenticationException(
-       "Credenciales inválidas",
-       ErrorCodes.AUTHENTICATION_FAILED)
-       .WithDetail("login", "Usuario o contraseña incorrectos");
+                "Credenciales inválidas",
+                ErrorCodes.AUTHENTICATION_FAILED)
+                .WithDetail("login", "Usuario o contraseña incorrectos");
         }
 
         var passwordCorrect = await _userManager.CheckPasswordAsync(
             user,
-            request.Password
-        );
+            request.Password);
 
         if (!passwordCorrect)
         {
-            _logger.LogError("Intento de login fallido para: {Email}", request.Email);
+            _logger.LogWarning(
+                "Intento de login fallido para administrador: {Email}",
+                request.Email);
+
             throw new AuthenticationException(
-          "Credenciales inválidas",
-          ErrorCodes.AUTHENTICATION_FAILED)
-          .WithDetail("login", "Usuario o contraseña incorrectos");
+                "Credenciales inválidas",
+                ErrorCodes.AUTHENTICATION_FAILED)
+                .WithDetail("login", "Usuario o contraseña incorrectos");
         }
 
         var roles = await _userManager.GetRolesAsync(user);
 
         var role = roles.FirstOrDefault()?.ToUpperInvariant();
 
-
         var token = _jwtService.GenerateToken(
             user.UserName!,
-            role
-        );
+            role);
+
+        _logger.LogInformation(
+            "Login exitoso del administrador: {Email}",
+            request.Email);
 
         return new LoginAdminModel.Response(token, role);
     }
 
+
     public async Task<LoginPatientModel.Response> LoginPatient(LoginPatientModel.Request request)
     {
-
         if (!request.Email.IsEmailValid())
         {
             throw new ValidationException(
@@ -140,23 +144,33 @@ public class AuthenticationService : IAuthenticationService
 
             await _userManager.AddToRoleAsync(user, Roles.Patient);
 
-            _logger.LogInformation("Paciente creado: {Email}", request.Email);
+            _logger.LogInformation(
+                "Se registró automáticamente un nuevo paciente: {Email}",
+                request.Email);
         }
         else if (user.Dni != dniStr)
         {
-            _logger.LogWarning("DNI incorrecto para: {Email}", request.Email);
-            throw new AuthenticationException("credenciales invalidadas", ErrorCodes.LOGIN_INVALID)
-        .WithDetail("login", "Usuario o DNI incorrectos");
+            _logger.LogWarning(
+                "DNI incorrecto durante login del paciente: {Email}",
+                request.Email);
+
+            throw new AuthenticationException(
+                "Credenciales inválidas",
+                ErrorCodes.LOGIN_INVALID)
+                .WithDetail("login", "Usuario o DNI incorrectos");
         }
 
         var roleUpper = Roles.Patient.ToUpperInvariant();
 
         var token = _jwtService.GenerateToken(
             user.UserName!,
-            roleUpper);
+            roleUpper,
+            user.Id);
+
+        _logger.LogInformation(
+            "Login exitoso del paciente: {Email}",
+            request.Email);
 
         return new LoginPatientModel.Response(token, roleUpper);
     }
 }
-
-

@@ -25,15 +25,26 @@ public class ExceptionHandlingMiddleware
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Se produjo un error durante el procesamiento de la solicitud");
+            if (ex is AppException appEx)
+            {
+                var details = appEx.Error.Details != null && appEx.Error.Details.Any()
+                    ? string.Join(';', appEx.Error.Details.Select(d => $"{d.Field}:{d.Issue}"))
+                    : string.Empty;
+                _logger.LogWarning("Error de aplicación: {ErrorCode} - {Message} {Details}", appEx.Error.ErrorCode, appEx.Error.Message, details);
+            }
+            else
+            {
+                _logger.LogError(ex, "Se produjo un error no controlado durante el procesamiento de la solicitud: {Message}", ex.Message);
+            }
+
             await HandleExceptionAsync(context, ex);
         }
     }
 
     private async Task HandleExceptionAsync(HttpContext context, Exception ex)
     {
-        ErrorResponse error = ex is AppException exApp ? 
-            exApp.Error : 
+        ErrorResponse error = ex is AppException exApp ?
+            exApp.Error :
             new ErrorResponse(nameof(ErrorCodes.UNHANDLED_ERROR), ErrorCodes.UNHANDLED_ERROR);
         var status = ex switch
         {
@@ -43,7 +54,7 @@ public class ExceptionHandlingMiddleware
             AuthorizationException => HttpStatusCode.Unauthorized,
             _ => HttpStatusCode.InternalServerError,
         };
-        var result = JsonSerializer.Serialize(error);
+        var result = JsonSerializer.Serialize(error, Dsw2026Tpi.Data.Options.JsonOptions.JsonSerializerOptions);
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = (int)status;
         await context.Response.WriteAsync(result);

@@ -4,6 +4,7 @@ using Dsw2026Tpi.CrossCutting.Exceptions;
 using Dsw2026Tpi.CrossCutting.Resources;
 using Dsw2026Tpi.Domain.Entities;
 using Dsw2026Tpi.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
 using System.Linq;
 
 namespace Dsw2026Tpi.Application.Services;
@@ -11,13 +12,16 @@ namespace Dsw2026Tpi.Application.Services;
 public class AppointmentService : IAppointmentService
 {
     private readonly IPersistence _persistence;
-    private readonly IAvailabilityService _availabilityService;
+    private readonly ILogger<AppointmentService> _logger;
 
-    public AppointmentService(IPersistence persistence, IAvailabilityService availabilityService)
+    public AppointmentService(
+        IPersistence persistence,
+        ILogger<AppointmentService> logger)
     {
         _persistence = persistence;
-        _availabilityService = availabilityService;
+        _logger = logger;
     }
+
 
     public async Task<AppointmentModel.Response> CreateAsync(AppointmentModel.Request request)
     {
@@ -34,6 +38,7 @@ public class AppointmentService : IAppointmentService
                 .WithDetail("dni", "El DNI es obligatorio.");
 
         var dniStr = request.Patient.dni.ToString();
+
         if (dniStr.Length < 7 || dniStr.Length > 10)
             throw new ValidationException(
                 "El DNI debe tener entre 7 y 10 dígitos.",
@@ -47,11 +52,13 @@ public class AppointmentService : IAppointmentService
                 .WithDetail("reason", "El motivo debe tener al menos 5 caracteres.");
 
         var doctor = await _persistence.GetById<Doctor>(request.DoctorId);
+
         if (doctor == null)
             throw new EntityNotFoundException(nameof(Doctor))
                 .WithDetail("doctorId", "El doctor no existe.");
 
         var availability = await _persistence.GetById<Availability>(request.AvailabilityId);
+
         if (availability == null)
             throw new EntityNotFoundException(nameof(Availability))
                 .WithDetail("availabilityId", "La disponibilidad no existe.");
@@ -86,6 +93,14 @@ public class AppointmentService : IAppointmentService
 
         await _persistence.Add(appointment);
 
+
+        _logger.LogInformation(
+            "Se creó un turno para el paciente {Dni} con el doctor {DoctorId} en la disponibilidad {AvailabilityId}",
+            appointment.PatientDni,
+            appointment.DoctorId,
+            appointment.AvailabilityId);
+
+
         return new AppointmentModel.Response(
             appointment.Id,
             appointment.DoctorId,
@@ -97,11 +112,25 @@ public class AppointmentService : IAppointmentService
             appointment.UpdatedAt);
     }
 
+
     public async Task<IEnumerable<AppointmentModel.Response>> GetByPatientAsync(long dni)
     {
-        var results = await _persistence.GetFiltered<Appointment>(a => a.PatientDni == dni && a.State == AppointmentState.BOOKED);
-        return (results ?? Enumerable.Empty<Appointment>()).Select(a => new AppointmentModel.Response(a.Id, a.DoctorId, a.AvailabilityId, a.PatientDni, a.Reason, a.State.ToString(), a.CreatedAt, a.UpdatedAt));
+        var results = await _persistence.GetFiltered<Appointment>(
+            a => a.PatientDni == dni &&
+                 a.State == AppointmentState.BOOKED);
+
+        return (results ?? Enumerable.Empty<Appointment>())
+            .Select(a => new AppointmentModel.Response(
+                a.Id,
+                a.DoctorId,
+                a.AvailabilityId,
+                a.PatientDni,
+                a.Reason,
+                a.State.ToString(),
+                a.CreatedAt,
+                a.UpdatedAt));
     }
+
 
     public async Task CancelAsync(Guid id)
     {
@@ -120,69 +149,143 @@ public class AppointmentService : IAppointmentService
         appointment.Cancel();
 
         await _persistence.Update(appointment);
+
+
+        _logger.LogInformation(
+            "Se canceló el turno {AppointmentId}",
+            appointment.Id);
     }
+
 
     public async Task<IEnumerable<AppointmentModel.SearchResult>> GetByDateAsync(DateTime date)
     {
+        _logger.LogInformation(
+            "Se realizó búsqueda de turnos por fecha {Date}",
+            date.Date);
+
+
         var start = date.Date;
         var end = start.AddDays(1);
 
-        var appointments = await _persistence.GetFiltered<Appointment>(a => a.State == AppointmentState.BOOKED);
+        var appointments = await _persistence.GetFiltered<Appointment>(
+            a => a.State == AppointmentState.BOOKED);
 
         var res = new List<AppointmentModel.SearchResult>();
 
-        if (appointments == null) return res;
+        if (appointments == null)
+            return res;
 
         foreach (var a in appointments)
         {
             var avail = await _persistence.GetById<Availability>(a.AvailabilityId);
-            if (avail == null) continue;
-            if (avail.Start < start || avail.Start >= end) continue;
 
-            var doctor = await _persistence.GetById<Doctor>(a.DoctorId, nameof(Doctor.Speciality));
+            if (avail == null)
+                continue;
+
+            if (avail.Start < start || avail.Start >= end)
+                continue;
+
+            var doctor = await _persistence.GetById<Doctor>(
+                a.DoctorId,
+                nameof(Doctor.Speciality));
+
             var specialty = doctor?.Speciality?.Name ?? string.Empty;
             var doctorName = doctor?.Name ?? string.Empty;
 
-            res.Add(new AppointmentModel.SearchResult(specialty, doctorName, avail.Start, a.DoctorId, a.AvailabilityId));
+            res.Add(
+                new AppointmentModel.SearchResult(
+                    specialty,
+                    doctorName,
+                    avail.Start,
+                    a.DoctorId,
+                    a.AvailabilityId));
         }
 
         return res;
     }
 
-    public async Task<Dsw2026Tpi.Domain.Entities.Pagination<AppointmentModel.SearchResult>> SearchAsync(Guid? specialtyId, Guid? doctorId, long? dni, DateTime? date, int pageSize, int pageIndex)
+
+        public async Task<AppointmentModel.SearchResponse> SearchAsync(
+        Guid? specialtyId,
+        Guid? doctorId,
+        long? dni,
+        DateTime? date,
+        int pageSize,
+        int pageIndex)
     {
-        var all = await _persistence.GetFiltered<Appointment>(a => a.State == AppointmentState.BOOKED);
 
-        var list = (all ?? Enumerable.Empty<Appointment>()).ToList();
+        _logger.LogInformation(
+            "Se realizó búsqueda combinada de turnos. SpecialtyId: {SpecialtyId}, DoctorId: {DoctorId}, DNI: {Dni}, Fecha: {Date}",
+            specialtyId,
+            doctorId,
+            dni,
+            date);
 
-        var filtered = new List<AppointmentModel.SearchResult>();
 
-        foreach (var a in list)
-        {
-            var doctor = await _persistence.GetById<Doctor>(a.DoctorId, nameof(Doctor.Speciality));
-            if (doctor == null) continue;
-            if (specialtyId.HasValue && doctor.SpecialityId != specialtyId) continue;
-            if (doctorId.HasValue && a.DoctorId != doctorId) continue;
-            if (dni.HasValue && a.PatientDni != dni) continue;
+            var all = await _persistence.GetFiltered<Appointment>(
+                a => a.State == AppointmentState.BOOKED);
 
-            var avail = await _persistence.GetById<Availability>(a.AvailabilityId);
-            if (avail == null) continue;
-            if (date.HasValue)
+            var list = (all ?? Enumerable.Empty<Appointment>()).ToList();
+
+            var filtered = new List<AppointmentModel.SearchItem>();
+
+            foreach (var a in list)
             {
-                var d = date.Value.Date;
-                if (avail.Start.Date != d) continue;
+                var doctor = await _persistence.GetById<Doctor>(
+                    a.DoctorId,
+                    nameof(Doctor.Speciality));
+
+                if (doctor == null)
+                    continue;
+
+                if (specialtyId.HasValue &&
+                    doctor.SpecialityId != specialtyId)
+                    continue;
+
+                if (doctorId.HasValue &&
+                    a.DoctorId != doctorId)
+                    continue;
+
+                if (dni.HasValue &&
+                    a.PatientDni != dni)
+                    continue;
+
+                var avail = await _persistence.GetById<Availability>(
+                    a.AvailabilityId);
+
+                if (avail == null)
+                    continue;
+
+                if (date.HasValue)
+                {
+                    var d = date.Value.Date;
+
+                    if (avail.Start.Date != d)
+                        continue;
+                }
+
+                var specialty = new AppointmentModel.SpecialtyInfo(doctor.SpecialityId ?? Guid.Empty, doctor.Speciality?.Name ?? string.Empty);
+                var doctorInfo = new AppointmentModel.DoctorInfo(doctor.Id, doctor.Name ?? string.Empty, specialty);
+                var patientInfo = new AppointmentModel.PatientInfo(a.PatientDni, null);
+
+                filtered.Add(new AppointmentModel.SearchItem(a.Id, a.State.ToString(), patientInfo, doctorInfo));
             }
 
-            filtered.Add(new AppointmentModel.SearchResult(doctor.Speciality?.Name ?? string.Empty, doctor.Name, avail.Start, doctor.Id, a.AvailabilityId));
-        }
+            var total = filtered.Count;
 
-        var total = filtered.Count;
+            var pageSizeAbs = Math.Abs(pageSize);
 
-        var pageSizeAbs = Math.Abs(pageSize);
-        var pageIndexNormalized = Math.Abs(pageIndex) == 0 ? 0 : Math.Abs(pageIndex) - 1;
+            var pageIndexNormalized =
+                Math.Abs(pageIndex) == 0
+                    ? 0
+                    : Math.Abs(pageIndex) - 1;
 
-        var pageData = filtered.OrderBy(r => r.AvailableTime).Skip(pageIndexNormalized * pageSizeAbs).Take(pageSizeAbs);
+            var pageData = filtered
+                .OrderBy(r => r.appointmentsId)
+                .Skip(pageIndexNormalized * pageSizeAbs)
+                .Take(pageSizeAbs)
+                .ToList();
 
-        return new Dsw2026Tpi.Domain.Entities.Pagination<AppointmentModel.SearchResult>(pageSizeAbs, pageIndexNormalized, total, pageData);
+            return new AppointmentModel.SearchResponse(pageSizeAbs, pageIndexNormalized, pageData, total);
     }
 }
