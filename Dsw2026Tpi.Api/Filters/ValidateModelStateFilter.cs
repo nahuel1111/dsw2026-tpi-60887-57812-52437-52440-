@@ -37,7 +37,6 @@ public class ValidateModelStateFilter : IActionFilter
             }
         }
 
-        // Fallback: construir response genérica de validación
         var error = new ErrorResponse(nameof(ErrorCodes.VALIDATION_ERROR), ErrorCodes.VALIDATION_ERROR);
         foreach (var model in context.ModelState)
         {

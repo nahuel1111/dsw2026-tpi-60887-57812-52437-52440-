@@ -15,7 +15,6 @@ namespace Dsw2026Tpi.Application.Dtos
 
         public record SearchResult(string Specialty, string Doctor, DateTime AvailableTime, Guid DoctorId, Guid AvailabilityId);
 
-        // New search response item matching required structure
         public record SearchItem(
             Guid appointmentsId,
             string appointmentsStatus,

@@ -6,7 +6,7 @@ using Dsw2026Tpi.CrossCutting.Models;
 using Dsw2026Tpi.CrossCutting.Resources;
 using Microsoft.AspNetCore.Mvc;
 using Dsw2026Tpi.Data.Options;
-
+using Dsw2026Tpi.Api.Filters;
 using Serilog;
 using Dsw2026Tpi.Api.Seed;
 using System.Threading.RateLimiting;
@@ -129,10 +129,9 @@ public class Program
                     });
                 });
             });
-            // Register a global model state filter that returns friendly validation errors
-            builder.Services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(opts =>
+            builder.Services.Configure<MvcOptions>(opts =>
             {
-                opts.Filters.Add(typeof(Dsw2026Tpi.Api.Filters.ValidateModelStateFilter));
+                opts.Filters.Add(typeof(ValidateModelStateFilter));
             });
 
             builder.Services.AddControllers();

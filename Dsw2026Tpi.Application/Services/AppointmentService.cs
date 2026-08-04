@@ -281,7 +281,7 @@ public class AppointmentService : IAppointmentService
                     : Math.Abs(pageIndex) - 1;
 
             var pageData = filtered
-                .OrderBy(r => r.appointmentsId) // order stable; original ordered by time but SearchItem doesn't contain time; keep deterministic order
+                .OrderBy(r => r.appointmentsId)
                 .Skip(pageIndexNormalized * pageSizeAbs)
                 .Take(pageSizeAbs)
                 .ToList();

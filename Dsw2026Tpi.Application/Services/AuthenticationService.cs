@@ -164,7 +164,8 @@ public class AuthenticationService : IAuthenticationService
 
         var token = _jwtService.GenerateToken(
             user.UserName!,
-            roleUpper);
+            roleUpper,
+            user.Id);
 
         _logger.LogInformation(
             "Login exitoso del paciente: {Email}",
