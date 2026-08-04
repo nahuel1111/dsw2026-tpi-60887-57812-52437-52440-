@@ -1,18 +1,18 @@
 using Dsw2026Tpi.Api.Configurations;
+using Dsw2026Tpi.Api.Filters;
 using Dsw2026Tpi.Api.Middlewares;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Dsw2026Tpi.Api.Seed;
 using Dsw2026Tpi.CrossCutting.Models;
 using Dsw2026Tpi.CrossCutting.Resources;
-using Microsoft.AspNetCore.Mvc;
 using Dsw2026Tpi.Data.Options;
-
-using Serilog;
-using Dsw2026Tpi.Api.Seed;
-using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Serilog;
 using System;
+using System.Threading.RateLimiting;
 
 
 namespace Dsw2026Tpi.Api;
@@ -135,7 +135,14 @@ public class Program
                 opts.Filters.Add(typeof(Dsw2026Tpi.Api.Filters.ValidateModelStateFilter));
             });
 
-            builder.Services.AddControllers();
+            builder.Services.AddControllers(options =>
+            {
+                options.Filters.Add<ValidateModelStateFilter>();
+            })
+.ConfigureApiBehaviorOptions(options =>
+{
+    options.SuppressModelStateInvalidFilter = true;
+});
             builder.Services.AddHealthChecks();
 
             var app = builder.Build();
