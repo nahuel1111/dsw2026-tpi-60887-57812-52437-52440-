@@ -101,16 +101,23 @@ public class Program
                     if ((path.StartsWith("/api/appointments", StringComparison.OrdinalIgnoreCase) )
                         && httpContext.Request.Method.Equals("POST", StringComparison.OrdinalIgnoreCase))
                     {
-                        var userId = httpContext.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                        var userId = httpContext.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                       ?? httpContext.User?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
+                       ?? httpContext.User?.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+
                         var key = "appointments-user-" + (userId ?? ip);
-                        return RateLimitPartition.GetTokenBucketLimiter(key, _ => new TokenBucketRateLimiterOptions
+
+                        // Loguear la clave usada para particionar para facilitar debugging en caso de que no funcione
+                        Log.Information("[LIMITER] Appointments partition key: {PartitionKey} | UserIdClaim: {UserId} | IP: {Ip}", key, userId, ip);
+
+                        // Usar SlidingWindowRateLimiter para un límite estricto por minuto (no permite ráfagas adicionales fuera de la ventana)
+                        return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
                         {
-                            TokenLimit = appointmentPer,
+                            PermitLimit = appointmentPer,
+                            Window = TimeSpan.FromMinutes(periodMinutes),
+                            SegmentsPerWindow = 1,
                             QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                            QueueLimit = 0,
-                            ReplenishmentPeriod = TimeSpan.FromMinutes(periodMinutes),
-                            TokensPerPeriod = appointmentPer,
-                            AutoReplenishment = true
+                            QueueLimit = 0
                         });
                     }
 
