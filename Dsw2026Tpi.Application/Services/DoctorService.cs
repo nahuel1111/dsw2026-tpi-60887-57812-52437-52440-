@@ -2,6 +2,8 @@
 using Dsw2026Tpi.Application.Interfaces;
 using Dsw2026Tpi.Domain.Entities;
 using Dsw2026Tpi.Domain.Interfaces;
+using Dsw2026Tpi.CrossCutting.Exceptions;
+using Dsw2026Tpi.CrossCutting.Resources;
 
 namespace Dsw2026Tpi.Application.Services;
 
@@ -38,17 +40,16 @@ public class DoctorService : IDoctorService
 
     public async Task<DoctorModel.Response> CreateAsync(DoctorModel.Request request)
     {
-        // 1. Validar que la especialidad exista
-        var speciality = await _persistence.GetById<Speciality>(request.SpecialityId)
-            ?? throw new Exception("La especialidad especificada no existe.");
+        ValidateRequest(request);
 
-        // 2. Crear la entidad Doctor
+        var speciality = await _persistence.GetById<Speciality>(request.SpecialityId)
+            ?? throw new EntityNotFoundException(nameof(Speciality))
+                .WithDetail("specialityId", "La especialidad no existe");
+
         var doctor = new Doctor(request.Name, request.LicenseNumber, speciality);
 
-        // 3. Guardar en la base de datos
         await _persistence.Add(doctor);
 
-        // 4. Retornar la respuesta
         return new DoctorModel.Response(
             doctor.Id,
             doctor.Name,
@@ -59,15 +60,16 @@ public class DoctorService : IDoctorService
 
     public async Task<DoctorModel.Response> UpdateAsync(Guid id, DoctorModel.Request request)
     {
-        // 1. Buscar el médico existente
+        ValidateRequest(request);
+
         var doctor = await _persistence.GetById<Doctor>(id)
-            ?? throw new Exception("El médico especificado no existe.");
+            ?? throw new EntityNotFoundException(nameof(Doctor))
+                .WithDetail("doctorId", "El médico especificado no existe");
 
-        // 2. Validar que la especialidad exista
         var speciality = await _persistence.GetById<Speciality>(request.SpecialityId)
-            ?? throw new Exception("La especialidad especificada no existe.");
+            ?? throw new EntityNotFoundException(nameof(Speciality))
+                .WithDetail("specialityId", "La especialidad no existe");
 
-        // 3. Actualizar entidad
         var updatedDoctor = new Doctor(request.Name, request.LicenseNumber, speciality, id);
 
         await _persistence.Update(updatedDoctor);
@@ -82,14 +84,12 @@ public class DoctorService : IDoctorService
 
     public async Task DeleteAsync(Guid id)
     {
-        // 1. Buscar el médico existente
         var doctor = await _persistence.GetById<Doctor>(id)
-            ?? throw new Exception("El médico especificado no existe.");
+            ?? throw new EntityNotFoundException(nameof(Doctor))
+                .WithDetail("doctorId", "El médico especificado no existe");
 
-        // 2. Aplicar borrado lógico
         doctor.Deactivate();
 
-        // 3. Actualizar en la base de datos
         await _persistence.Update(doctor);
     }
 
@@ -97,11 +97,48 @@ public class DoctorService : IDoctorService
     public async Task<IEnumerable<DoctorModel.AvailabilityResponse>> GetAvailabilitiesAsync(Guid id)
     {
         var doctor = await _persistence.GetById<Doctor>(id)
-            ?? throw new Exception("El médico especificado no existe.");
+            ?? throw new EntityNotFoundException(nameof(Doctor))
+                .WithDetail("doctorId", "El médico especificado no existe");
 
         var availabilities = await _availabilityService.GetByDoctorAsync(id);
 
         return availabilities.Select(a =>
             new DoctorModel.AvailabilityResponse(a.Day, a.StartTime, a.EndTime));
+    }
+
+
+    private static void ValidateRequest(DoctorModel.Request request)
+    {
+        if (request == null)
+        {
+            throw new ValidationException(
+                "Datos inválidos",
+                ErrorCodes.VALIDATION_ERROR)
+                .WithDetail("request", "Los datos del médico son obligatorios");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            throw new ValidationException(
+                "Nombre obligatorio",
+                ErrorCodes.VALIDATION_ERROR)
+                .WithDetail("name", "El nombre del médico es obligatorio");
+        }
+
+        if (request.Name.Length < 3 || request.Name.Length > 100)
+        {
+            throw new ValidationException(
+                "Nombre inválido",
+                ErrorCodes.VALIDATION_ERROR)
+                .WithDetail("name", "Debe tener entre 3 y 100 caracteres");
+        }
+
+        if (request.SpecialityId == Guid.Empty)
+        {
+            throw new ValidationException(
+                "SpecialityId obligatorio",
+                ErrorCodes.VALIDATION_ERROR)
+                .WithDetail("specialityId", "La especialidad es obligatoria");
+        }
     }
 }
